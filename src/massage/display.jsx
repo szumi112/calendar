@@ -36,6 +36,7 @@ function Masaz() {
   const getTrainingData = async () => {
     const snapshot = await getDocs(trainingColRef);
     const now = moment.tz("Europe/Warsaw");
+    const endOfDay = moment.tz("Europe/Warsaw").endOf("day"); // Capture the end of the current day
 
     let filteredAndSortedData = snapshot.docs
       .map((doc) => ({
@@ -43,7 +44,8 @@ function Masaz() {
         ...doc.data(),
       }))
       .filter((training) => {
-        const trainingDate2 = training.time2
+        // Check for the presence of time2, fallback to time1 if not available
+        const trainingEndTime = training.time2
           ? moment.tz(
               `${training.date} ${training.time2}`,
               "DD-MM-YYYY HH:mm",
@@ -54,31 +56,24 @@ function Masaz() {
               "DD-MM-YYYY HH:mm",
               "Europe/Warsaw"
             );
-        return trainingDate2.isAfter(now);
+
+        // Include the session if its end time is today or in the future
+        return (
+          trainingEndTime.isSameOrBefore(endOfDay) ||
+          trainingEndTime.isAfter(now)
+        );
       })
       .sort((a, b) => {
-        const dateA = a.time2
-          ? moment.tz(
-              `${a.date} ${a.time2}`,
-              "DD-MM-YYYY HH:mm",
-              "Europe/Warsaw"
-            )
-          : moment.tz(
-              `${a.date} ${a.time1}`,
-              "DD-MM-YYYY HH:mm",
-              "Europe/Warsaw"
-            );
-        const dateB = b.time2
-          ? moment.tz(
-              `${b.date} ${b.time2}`,
-              "DD-MM-YYYY HH:mm",
-              "Europe/Warsaw"
-            )
-          : moment.tz(
-              `${b.date} ${b.time1}`,
-              "DD-MM-YYYY HH:mm",
-              "Europe/Warsaw"
-            );
+        const dateA = moment.tz(
+          `${a.date} ${a.time1}`,
+          "DD-MM-YYYY HH:mm",
+          "Europe/Warsaw"
+        );
+        const dateB = moment.tz(
+          `${b.date} ${b.time1}`,
+          "DD-MM-YYYY HH:mm",
+          "Europe/Warsaw"
+        );
         return dateA.diff(dateB);
       });
 
@@ -89,8 +84,6 @@ function Masaz() {
         : [];
     setTrainingData(filteredAndSortedData);
   };
-
-  console.log(trainingData);
 
   const handleNext = () => {
     setCurrentPage((current) =>
