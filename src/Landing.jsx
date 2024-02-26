@@ -18,8 +18,13 @@ import {
   updateDoc,
   arrayUnion,
 } from "firebase/firestore";
+import momento from "moment";
 
 import moment from "moment-timezone";
+import "moment/locale/pl";
+import { dayNamesMap } from "./helpers/engToPolishDay";
+
+moment.locale("pl");
 
 function Landing() {
   const [trainingData, setTrainingData] = useState([]);
@@ -107,6 +112,50 @@ function Landing() {
     setUserInputs({
       ...userInputs,
       [`${id}-${timeSlot}`]: value,
+    });
+  };
+
+  const handleMassageInputChange = (e, id, timeKey, index) => {
+    const value = e.target.value;
+    const inputKey = `${id}-${timeKey}-${index}`;
+    setUserInputs({
+      ...userInputs,
+      [inputKey]: value,
+    });
+  };
+
+  const registerUserForMassage = async (id, timeKey, userName, index) => {
+    if (!userName) {
+      toast({
+        title: "Error",
+        description: "Proszę wpisać imię i nazwisko.",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    const userKey = `${timeKey}Users`;
+    const docRef = doc(db, "treningi", id);
+
+    await updateDoc(docRef, {
+      [userKey]: arrayUnion(userName),
+    });
+
+    setUserInputs({
+      ...userInputs,
+      [`${id}-${timeKey}-${index}`]: "",
+    });
+
+    getTrainingData();
+
+    toast({
+      title: "Success",
+      description: "Zapisany na masaż.",
+      status: "success",
+      duration: 5000,
+      isClosable: true,
     });
   };
 
@@ -211,57 +260,61 @@ function Landing() {
       color="gray.900"
     >
       <Center mx="auto" flexDir={"column"}>
-        <Heading
-          as="h1"
-          size="xl"
-          mb={4}
-          mt={{ base: "20%", md: "10%", lg: 0 }}
-          textAlign={"center"}
-        >
-          Zapisy na treningi
-        </Heading>
         {trainingData?.map((data, index) => (
-          <Box
-            key={data.id}
-            p={4}
-            borderWidth="1px"
-            borderRadius="lg"
-            m={2}
-            w="300px"
-            mx="auto"
-            border="1px solid grey"
-          >
-            <Text fontSize="xl" mb={4}>
-              {data.date}
-            </Text>
-            <VStack spacing={4}>
-              <Box>
-                <Text mb={2}>
-                  {data.time1} - {data.people1} miejsca
-                </Text>
-                {generateInputs(
-                  Number(data.people1),
-                  data.id,
-                  "time1",
-                  data.time1Users || []
-                )}
-              </Box>
-              {data.time2 && (
+          <>
+            <Heading
+              as="h1"
+              size="xl"
+              mb={4}
+              mt={{ base: "20%", md: "10%", lg: 0 }}
+              textAlign={"center"}
+            >
+              Zapisy na treningi
+            </Heading>
+            <Box
+              key={data.id}
+              p={4}
+              borderWidth="1px"
+              borderRadius="lg"
+              m={2}
+              w="300px"
+              mx="auto"
+              border="1px solid grey"
+            >
+              <Text fontSize="xl" mb={4}>
+                {data.date}{" "}
+                {dayNamesMap[moment(data.date, "DD-MM-YYYY").format("dddd")]}
+              </Text>
+              <VStack spacing={4}>
                 <Box>
                   <Text mb={2}>
-                    {data.time2} - {data.people2} miejsca
+                    {data.time1} - {data.people1} miejsca
                   </Text>
                   {generateInputs(
-                    Number(data.people2),
+                    Number(data.people1),
                     data.id,
-                    "time2",
-                    data.time2Users || []
+                    "time1",
+                    data.time1Users || []
                   )}
                 </Box>
-              )}
-            </VStack>
-          </Box>
+                {data.time2 && (
+                  <Box>
+                    <Text mb={2}>
+                      {data.time2} - {data.people2} miejsca
+                    </Text>
+                    {generateInputs(
+                      Number(data.people2),
+                      data.id,
+                      "time2",
+                      data.time2Users || []
+                    )}
+                  </Box>
+                )}
+              </VStack>
+            </Box>
+          </>
         ))}
+
         <Flex mt="4">
           <Button onClick={handlePrevious} isDisabled={currentPage <= 0}>
             Poprzedni trening
